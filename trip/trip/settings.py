@@ -11,6 +11,11 @@ BOT_NAME = "trip"
 
 SPIDER_MODULES = ["trip.spiders"]
 NEWSPIDER_MODULE = "trip.spiders"
+# Уровень логирования
+LOG_LEVEL = 'INFO'
+
+# Указываем формат для логирования, если нужно
+LOG_FORMAT = '%(levelname)s: %(message)s'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent

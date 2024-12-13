@@ -1,6 +1,7 @@
 import scrapy
 import re  # Для работы с регулярными выражениями
 import json  # Для работы с сохранением данных в JSON
+import os  # Для проверки и работы с файлами
 
 # Словарь для перевода типов топлива
 fuel_translation = {
@@ -23,11 +24,12 @@ class SprintSpider(scrapy.Spider):
         "https://auto.ria.com/uk/search/?lang_id=4&page=0&countpage=100&category_id=1&custom=1&abroad=2"
     ]
 
-    parse_counter = 1  # Инициализация счетчика парсинга
+    # Путь к файлу для сохранения
+    file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
 
     def start_requests(self):
-        # Делаем запросы на страницы от 0 до 2879
-        for page in range(0, 2880):
+        # Делаем запросы на страницы от 0 до 500
+        for page in range(0, 20):
             url = f"https://auto.ria.com/uk/search/?lang_id=4&page={page}&countpage=100&category_id=1&custom=1&abroad=2"
             yield scrapy.Request(url, callback=self.parse)
 
@@ -37,6 +39,10 @@ class SprintSpider(scrapy.Spider):
             self.logger.info(
                 f"No cars found on page {response.url}. Stopping crawl.")
             return  # Прерываем выполнение, если контент не найден
+
+        # Загружаем существующие данные
+        existing_data = self.load_existing_data()
+        existing_ids = {item["id"] for item in existing_data}
 
         # Обрабатываем найденные автомобили на странице
         cars = response.xpath("//section[@class='ticket-item ']")
@@ -69,7 +75,6 @@ class SprintSpider(scrapy.Spider):
             if fuel_type_raw:
                 fuel_type = fuel_type_raw.split(",")[0].strip()
                 # Переводим тип топлива на английский
-                # Если не нашли в словаре, оставляем null
                 fuel_type = fuel_translation.get(fuel_type, None)
             else:
                 fuel_type = None  # null, если не указано
@@ -116,10 +121,26 @@ class SprintSpider(scrapy.Spider):
                 # Автомобиль в продаже
                 car_data["status"] = "on_sale"
 
-            # Сохраняем данные в файл
-            file_path = "/home/peter/Desktop/Parsers/auto_parser/auto_analitic/auto_analitic/data_store/sprintdata.json"
-            with open(file_path, 'a', encoding='utf-8') as f:
-                json.dump(car_data, f, ensure_ascii=False)
-                f.write("\n")  # Каждая запись на новой строке
+            # Проверяем на дублирование по ID
+            if product_id not in existing_ids:
+                existing_data.append(car_data)  # Добавляем новую запись
+                existing_ids.add(product_id)  # Добавляем ID в множество
 
-            yield car_data  # Отправка данных дальше по пайплайну (если нужно)
+        # Сохраняем данные
+        self.save_data(existing_data)
+
+    def load_existing_data(self):
+        """Загружает существующие данные из файла."""
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                try:
+                    return json.load(f)
+                except json.JSONDecodeError:
+                    return []  # Если файл пустой или поврежден, возвращаем пустой список
+        return []
+
+    def save_data(self, data):
+        """Сохраняет данные в файл."""
+        with open(self.file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False,
+                      indent=4)  # Сохраняем список

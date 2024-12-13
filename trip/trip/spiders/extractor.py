@@ -1,6 +1,7 @@
 import scrapy
 import time
 import json  # Для работы с сохранением данных в JSON
+import os  # Для работы с файлами
 
 # Словари для перевода
 color_translation = {
@@ -37,9 +38,12 @@ class ExtractorSpider(scrapy.Spider):
     allowed_domains = ["auto.ria.com"]
 
     # Настройки
-    total_pages = 2876  # Общее количество страниц
+    total_pages = 20  # Общее количество страниц
     pause_interval = 50  # Сколько страниц парсить перед паузой
-    pause_duration = 180  # Длительность паузы в секундах (3 минуты)
+    pause_duration = 20  # Длительность паузы в секундах
+
+    # Путь к файлу для сохранения данных
+    file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/exdata.json"
 
     def start_requests(self):
         for page in range(self.total_pages):
@@ -131,13 +135,23 @@ class ExtractorSpider(scrapy.Spider):
                 f"Помилка при парсингу сторінки {response.url}: {e}")
 
     def save_to_json(self, data):
-        # Путь к файлу
-        file_path = "/home/peter/Desktop/Parsers/auto_parser/auto_analitic/auto_analitic/data_store/extdata.json"
+        # Проверяем, существует ли файл
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                try:
+                    existing_data = json.load(f)
+                except json.JSONDecodeError:
+                    existing_data = []
+        else:
+            existing_data = []
 
-        # Открываем файл и добавляем данные в формате JSON
-        with open(file_path, 'a', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False)
-            f.write("\n")  # Каждая запись на новой строке
+        # Проверяем, есть ли уже такая запись
+        if not any(item["id"] == data["id"] for item in existing_data):
+            existing_data.append(data)
+
+            # Сохраняем данные в файл
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=4)
 
     def extract_optional_data(self, response, field_name, default_value=None, translation=None):
         data = response.css(
