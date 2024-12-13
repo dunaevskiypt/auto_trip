@@ -155,27 +155,49 @@ class CombinedSpider(scrapy.Spider):
             self.logger.error(f"Error parsing car details: {e}")
 
     def save_to_file(self, data):
-        """Saves the scraped data to a JSON file."""
+        """Сохраняет данные в файл JSON, проверяя существующие записи."""
 
-        # Check if the data file exists
+        # Проверяем, существует ли файл с данными
         if os.path.exists(self.data_file_path):
-            # Load existing data (handle potential JSON decode errors)
+            # Загружаем существующие данные
             try:
                 with open(self.data_file_path, 'r', encoding='utf-8') as f:
                     existing_data = json.load(f)
             except json.JSONDecodeError:
                 existing_data = []
-
         else:
-            # Create an empty list if the file doesn't exist
+            # Если файла нет, создаем пустой список
             existing_data = []
 
-        # Append the new data to the existing list
-        existing_data.append(data)
+        # Проверяем, есть ли уже запись с таким id
+        existing_record = next(
+            (record for record in existing_data if record["id"] == data["id"]), None)
 
-        # Open the file in write mode and ensure proper encoding
+        if existing_record:
+            # Если запись с таким id найдена, сравниваем поля для обновления
+            update_needed = False
+            fields_to_check = ["date_added", "date_updated",
+                               "status", "price_usd", "mileage"]
+
+            for field in fields_to_check:
+                if existing_record[field] != data[field]:
+                    update_needed = True
+                    break
+
+            if update_needed:
+                # Обновляем запись в списке
+                index = existing_data.index(existing_record)
+                existing_data[index] = data
+                self.logger.info(f"Обновлена запись с id {data['id']}")
+            else:
+                self.logger.info(f"Запись с id {data['id']} не изменена.")
+        else:
+            # Если записи с таким id нет, добавляем новую
+            existing_data.append(data)
+            self.logger.info(f"Добавлена новая запись с id {data['id']}")
+
+        # Перезаписываем файл с обновленными данными
         with open(self.data_file_path, 'w', encoding='utf-8') as f:
-            # Write the updated data with indentation for readability
             json.dump(existing_data, f, ensure_ascii=False, indent=4)
 
     def get_fuel_type(self, car):
