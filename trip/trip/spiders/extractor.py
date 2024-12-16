@@ -1,5 +1,4 @@
 import scrapy
-import time
 import json  # Для работы с сохранением данных в JSON
 import os  # Для работы с файлами
 
@@ -37,37 +36,22 @@ class ExtractorSpider(scrapy.Spider):
     name = "extractor"
     allowed_domains = ["auto.ria.com"]
 
-    # Настройки
-    total_pages = 20  # Общее количество страниц
-    pause_interval = 50  # Сколько страниц парсить перед паузой
-    pause_duration = 20  # Длительность паузы в секундах
+    # Путь к файлу с данными
+    sprintdata_file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
 
     # Путь к файлу для сохранения данных
     file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/exdata.json"
 
     def start_requests(self):
-        for page in range(self.total_pages):
-            url = f"https://auto.ria.com/uk/search/?lang_id=4&page={page}&countpage=100&category_id=1&custom=1&abroad=2"
-            yield scrapy.Request(
-                url, callback=self.parse, meta={"page_number": page}
-            )
+        # Загружаем список URL из файла sprintdata.json
+        with open(self.sprintdata_file_path, 'r', encoding='utf-8') as f:
+            sprint_data = json.load(f)
 
-    def parse(self, response):
-        page_number = response.meta.get("page_number")
-        self.logger.info(
-            f"Парсинг сторінки: {response.url} (сторінка {page_number + 1})")
-
-        # Сбор ссылок на автомобили
-        car_links = response.css(
-            "div.content-bar a.m-link-ticket::attr(href)").getall()
-        for link in car_links:
-            yield response.follow(link, callback=self.parse_car)
-
-        # Пауза после каждых `pause_interval` страниц
-        if (page_number + 1) % self.pause_interval == 0:
-            self.logger.info(
-                f"Пауза на {self.pause_duration} секунд после {page_number + 1} страниц")
-            time.sleep(self.pause_duration)
+        # Извлекаем URL из каждого объекта и отправляем запросы
+        for car_entry in sprint_data:
+            product_url = car_entry.get("product_url")
+            if product_url:
+                yield scrapy.Request(product_url, callback=self.parse_car)
 
     def parse_car(self, response):
         self.logger.info(f"Парсинг автомобіля: {response.url}")

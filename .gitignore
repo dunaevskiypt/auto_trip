@@ -50,6 +50,6 @@ Desktop.ini
 nosetests.xml
 junit*.xml
 htmlcov/
-
+*.json
 # Generated documentation
 /docs/_build/
