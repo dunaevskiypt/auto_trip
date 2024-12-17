@@ -25,11 +25,12 @@ class SprintSpider(scrapy.Spider):
     ]
 
     # Путь к файлу для сохранения данных
-    file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
+    # Путь к файлу для сохранения данных
+    file_path = "/app/trip/data/sprintdata.json"
 
     def start_requests(self):
         # Делаем запросы на страницы от 0 до 2800
-        for page in range(0, 2800):
+        for page in range(0, 20):
             url = f"https://auto.ria.com/uk/search/?lang_id=4&page={page}&countpage=100&category_id=1&custom=1&abroad=2"
             yield scrapy.Request(url, callback=self.parse)
 

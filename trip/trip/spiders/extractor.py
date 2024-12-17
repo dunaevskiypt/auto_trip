@@ -37,10 +37,10 @@ class ExtractorSpider(scrapy.Spider):
     allowed_domains = ["auto.ria.com"]
 
     # Путь к файлу с данными
-    sprintdata_file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
+    sprintdata_file_path = "/app/trip/trip/data/sprintdata.json"
 
     # Путь к файлу для сохранения данных
-    file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/exdata.json"
+    file_path = "/app/trip/trip/data/exdata.json"
 
     def start_requests(self):
         # Загружаем список URL из файла sprintdata.json

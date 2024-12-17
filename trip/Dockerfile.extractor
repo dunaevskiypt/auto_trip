@@ -1,0 +1,20 @@
+# Используем официальный образ Python как базовый
+FROM python:3.9-slim
+
+# Устанавливаем зависимости
+WORKDIR /app
+COPY requirements.txt /app/
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем весь код проекта в контейнер
+COPY . /app/
+
+# Создаем папку для данных, которую будем монтировать
+RUN mkdir -p /app/trip/trip/data
+
+# Указываем рабочую директорию
+WORKDIR /app/trip
+
+# Команда для запуска парсера
+CMD ["scrapy", "crawl", "extractor"]

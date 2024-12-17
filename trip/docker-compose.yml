@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  extractor:
+    build:
+      context: .
+      dockerfile: Dockerfile.extractor
+    volumes:
+      - /home/peter/Documents/store:/app/trip/trip/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: scrapy crawl extractor

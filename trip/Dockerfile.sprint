@@ -1,0 +1,20 @@
+# Используем официальный Python образ
+FROM python:3.9-slim
+
+# Устанавливаем рабочую директорию внутри контейнера
+WORKDIR /app
+
+# Копируем requirements.txt в контейнер, если он у вас есть
+COPY requirements.txt /app/
+
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем все файлы проекта в контейнер
+COPY . /app
+
+# Устанавливаем Volume для хранения данных
+VOLUME ["/app/trip/data"]
+
+# Запускаем команду для парсинга, указываем нужного паука
+CMD ["scrapy", "crawl", "sprint"]
