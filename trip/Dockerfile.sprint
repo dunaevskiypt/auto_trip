@@ -1,20 +1,17 @@
-# Используем официальный Python образ
+# Используем базовый образ Python
 FROM python:3.9-slim
 
-# Устанавливаем рабочую директорию внутри контейнера
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir scrapy
+
+# Создаем директории
 WORKDIR /app
 
-# Копируем requirements.txt в контейнер, если он у вас есть
-COPY requirements.txt /app/
-
-# Устанавливаем зависимости
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Копируем все файлы проекта в контейнер
+# Копируем файлы проекта
 COPY . /app
 
-# Устанавливаем Volume для хранения данных
-VOLUME ["/app/trip/data"]
+# Указываем путь к Volume
+VOLUME ["/data"]
 
-# Запускаем команду для парсинга, указываем нужного паука
+# Запускаем паука
 CMD ["scrapy", "crawl", "sprint"]
