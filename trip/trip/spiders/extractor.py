@@ -1,34 +1,21 @@
 import scrapy
-import json  # Для работы с сохранением данных в JSON
-import os  # Для работы с файлами
+import json
+import os
 
 # Словари для перевода
 color_translation = {
-    "Бежевий": "Beige",
-    "Чорний": "Black",
-    "Синій": "Blue",
-    "Коричневий": "Brown",
-    "Зелений": "Green",
-    "Сірий": "Gray",
-    "Помаранчевий": "Orange",
-    "Фіолетовий": "Purple",
-    "Червоний": "Red",
-    "Білий": "White",
-    "Жовтий": "Yellow"
+    "Бежевий": "Beige", "Чорний": "Black", "Синій": "Blue", "Коричневий": "Brown",
+    "Зелений": "Green", "Сірий": "Gray", "Помаранчевий": "Orange",
+    "Фіолетовий": "Purple", "Червоний": "Red", "Білий": "White", "Жовтий": "Yellow"
 }
 
 gearbox_translation = {
-    "Ручна / Механіка": "Manual",
-    "Автомат": "Automatic",
-    "Типтронік": "Tiptronic",
-    "Робот": "Robot",
-    "Варіатор": "CVT"
+    "Ручна / Механіка": "Manual", "Автомат": "Automatic",
+    "Типтронік": "Tiptronic", "Робот": "Robot", "Варіатор": "CVT"
 }
 
 drive_translation = {
-    "Повний": "All-Wheel Drive",
-    "Передній": "Front-Wheel Drive",
-    "Задній": "Rear-Wheel Drive"
+    "Повний": "All-Wheel Drive", "Передній": "Front-Wheel Drive", "Задній": "Rear-Wheel Drive"
 }
 
 
@@ -36,51 +23,44 @@ class ExtractorSpider(scrapy.Spider):
     name = "extractor"
     allowed_domains = ["auto.ria.com"]
 
-    # Путь к файлу с данными
-    sprintdata_file_path = "/app/trip/trip/data/sprintdata.json"
-
-    # Путь к файлу для сохранения данных
-    file_path = "/app/trip/trip/data/exdata.json"
+    # Пути для файлов (обновленные для Docker Volume)
+    sprintdata_file_path = "/data/sprintdata.json"
+    file_path = "/data/exdata.json"
 
     def start_requests(self):
-        # Загружаем список URL из файла sprintdata.json
-        with open(self.sprintdata_file_path, 'r', encoding='utf-8') as f:
-            sprint_data = json.load(f)
+        if not os.path.exists(self.sprintdata_file_path):
+            self.logger.error(f"Файл {self.sprintdata_file_path} не найден.")
+            return
 
-        # Извлекаем URL из каждого объекта и отправляем запросы
+        with open(self.sprintdata_file_path, 'r', encoding='utf-8') as f:
+            try:
+                sprint_data = json.load(f)
+            except json.JSONDecodeError:
+                self.logger.error("Ошибка чтения JSON из sprintdata.json")
+                return
+
         for car_entry in sprint_data:
             product_url = car_entry.get("product_url")
             if product_url:
                 yield scrapy.Request(product_url, callback=self.parse_car)
 
     def parse_car(self, response):
-        self.logger.info(f"Парсинг автомобіля: {response.url}")
+        self.logger.info(f"Парсинг автомобиля: {response.url}")
         car_data = {
-            "brand": None,
-            "model": None,
-            "year": None,
-            "price_usd": None,
-            "mileage": None,
-            "state_number": None,
-            "seller_name": None,
-            "owners_count": None,
-            "color": None,
-            "gearbox": None,
-            "drive": None,
-            "id": None,
+            "brand": None, "model": None, "year": None, "price_usd": None,
+            "mileage": None, "state_number": None, "seller_name": None,
+            "owners_count": None, "color": None, "gearbox": None, "drive": None, "id": None,
         }
 
         try:
             car_title = response.css("h1.head::attr(title)").get()
             if car_title:
                 title_parts = car_title.split()
-                if len(title_parts) > 2 and title_parts[-1].isdigit():
-                    car_data["brand"] = title_parts[0]
-                    car_data["model"] = " ".join(title_parts[1:-1])
-                    car_data["year"] = title_parts[-1]
-                else:
-                    car_data["brand"] = title_parts[0]
-                    car_data["model"] = " ".join(title_parts[1:])
+                car_data["brand"] = title_parts[0]
+                car_data["model"] = " ".join(
+                    title_parts[1:-1]) if title_parts[-1].isdigit() else " ".join(title_parts[1:])
+                car_data["year"] = title_parts[-1] if title_parts[-1].isdigit() else None
+
             price_usd = response.css("div.price_value strong::text").get()
             if price_usd:
                 car_data["price_usd"] = int(
@@ -95,10 +75,8 @@ class ExtractorSpider(scrapy.Spider):
                 car_data["state_number"] = state_number.strip().replace(" ", "")
             car_data["seller_name"] = response.css(
                 "div.seller_info_name a::text").get()
-            owners_count = self.extract_optional_data(
-                response, "Кількість власників")
-            if owners_count and owners_count.isdigit():
-                car_data["owners_count"] = int(owners_count)
+            car_data["owners_count"] = self.extract_optional_data(
+                response, "Кількість власників", default_value=None)
             car_data["color"] = self.extract_optional_data(
                 response, "Колір", translation=color_translation)
             car_data["gearbox"] = self.extract_optional_data(
@@ -110,16 +88,12 @@ class ExtractorSpider(scrapy.Spider):
             if car_id:
                 car_data["id"] = int(car_id.strip())
 
-            # Сохранение данных в файл
             self.save_to_json(car_data)
-
             yield car_data
         except Exception as e:
-            self.logger.error(
-                f"Помилка при парсингу сторінки {response.url}: {e}")
+            self.logger.error(f"Ошибка парсинга {response.url}: {e}")
 
     def save_to_json(self, data):
-        # Проверяем, существует ли файл
         if os.path.exists(self.file_path):
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 try:
@@ -129,11 +103,8 @@ class ExtractorSpider(scrapy.Spider):
         else:
             existing_data = []
 
-        # Проверяем, есть ли уже такая запись
-        if not any(item["id"] == data["id"] for item in existing_data):
+        if not any(item.get("id") == data.get("id") for item in existing_data):
             existing_data.append(data)
-
-            # Сохраняем данные в файл
             with open(self.file_path, 'w', encoding='utf-8') as f:
                 json.dump(existing_data, f, ensure_ascii=False, indent=4)
 
@@ -142,14 +113,8 @@ class ExtractorSpider(scrapy.Spider):
             f"dd:contains('{field_name}') .argument::text").get()
         if data:
             data = data.strip()
-            # Проверка на наличие слова "металік" в цвете
             if field_name == "Колір" and "металік" in data.lower():
-                color_base = data.split()[0]  # Берем основную часть цвета
-                color_translated = translation.get(color_base, None)
-                if color_translated:
-                    return f"{color_translated} Metallic"
-            # Применяем перевод, если словарь задан
-            if translation:
-                return translation.get(data, None)
-            return data
+                color_base = data.split()[0]
+                return f"{translation.get(color_base, color_base)} Metallic" if translation else color_base
+            return translation.get(data, data) if translation else data
         return default_value
