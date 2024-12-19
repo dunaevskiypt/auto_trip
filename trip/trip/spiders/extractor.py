@@ -48,8 +48,8 @@ class ExtractorSpider(scrapy.Spider):
         self.logger.info(f"Парсинг автомобиля: {response.url}")
         car_data = {
             "brand": None, "model": None, "year": None, "price_usd": None,
-            "mileage": None, "state_number": None, "seller_name": None,
-            "owners_count": None, "color": None, "gearbox": None, "drive": None, "id": None,
+            "mileage": None, "state_number": None, "owners_count": None, "color": None,
+            "gearbox": None, "drive": None, "id": None,
         }
 
         try:
@@ -73,8 +73,9 @@ class ExtractorSpider(scrapy.Spider):
             state_number = response.css("span.state-num.ua::text").get()
             if state_number:
                 car_data["state_number"] = state_number.strip().replace(" ", "")
-            car_data["seller_name"] = response.css(
-                "div.seller_info_name a::text").get()
+            # Удалена строка для seller_name
+            # car_data["seller_name"] = response.css(
+            #     "div.seller_info_name a::text").get()
             car_data["owners_count"] = self.extract_optional_data(
                 response, "Кількість власників", default_value=None)
             car_data["color"] = self.extract_optional_data(
