@@ -28,6 +28,10 @@ class ExtractorSpider(scrapy.Spider):
     file_path = "/data/exdata.json"
 
     def start_requests(self):
+        # Загрузка уникальных ID из файла для проверки
+        existing_ids = self.load_existing_ids()
+
+        # Загрузка данных из sprintdata.json
         if not os.path.exists(self.sprintdata_file_path):
             self.logger.error(f"Файл {self.sprintdata_file_path} не найден.")
             return
@@ -40,8 +44,10 @@ class ExtractorSpider(scrapy.Spider):
                 return
 
         for car_entry in sprint_data:
+            car_id = car_entry.get("id")
             product_url = car_entry.get("product_url")
-            if product_url:
+            # Проверяем, есть ли ID в уже обработанных
+            if product_url and car_id not in existing_ids:
                 yield scrapy.Request(product_url, callback=self.parse_car)
 
     def parse_car(self, response):
@@ -73,9 +79,6 @@ class ExtractorSpider(scrapy.Spider):
             state_number = response.css("span.state-num.ua::text").get()
             if state_number:
                 car_data["state_number"] = state_number.strip().replace(" ", "")
-            # Удалена строка для seller_name
-            # car_data["seller_name"] = response.css(
-            #     "div.seller_info_name a::text").get()
             car_data["owners_count"] = self.extract_optional_data(
                 response, "Кількість власників", default_value=None)
             car_data["color"] = self.extract_optional_data(
@@ -94,20 +97,34 @@ class ExtractorSpider(scrapy.Spider):
         except Exception as e:
             self.logger.error(f"Ошибка парсинга {response.url}: {e}")
 
-    def save_to_json(self, data):
+    def load_existing_ids(self):
+        """Загружает уникальные ID из exdata.json для проверки."""
         if os.path.exists(self.file_path):
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 try:
-                    existing_data = json.load(f)
+                    return set(item["id"] for item in json.load(f) if "id" in item)
                 except json.JSONDecodeError:
-                    existing_data = []
-        else:
-            existing_data = []
+                    self.logger.error("Ошибка чтения JSON из exdata.json")
+        return set()
 
-        if not any(item.get("id") == data.get("id") for item in existing_data):
-            existing_data.append(data)
+    def save_to_json(self, data):
+        """Сохраняет новую запись в exdata.json, избегая дубликатов."""
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                try:
+                    existing_data = {
+                        item["id"]: item for item in json.load(f) if "id" in item}
+                except json.JSONDecodeError:
+                    existing_data = {}
+        else:
+            existing_data = {}
+
+        # Проверяем уникальность ID
+        if data["id"] not in existing_data:
+            existing_data[data["id"]] = data
             with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(existing_data, f, ensure_ascii=False, indent=4)
+                json.dump(list(existing_data.values()),
+                          f, ensure_ascii=False, indent=4)
 
     def extract_optional_data(self, response, field_name, default_value=None, translation=None):
         data = response.css(
