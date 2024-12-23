@@ -28,7 +28,7 @@ class SprintSpider(scrapy.Spider):
 
     def start_requests(self):
         # Делаем запросы на страницы от 0 до 2879
-        for page in range(0, 100):
+        for page in range(0, 1000):
             url = f"https://auto.ria.com/uk/search/?lang_id=4&page={page}&countpage=100&category_id=1&custom=1&abroad=2"
             yield scrapy.Request(url, callback=self.parse)
 
