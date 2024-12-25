@@ -1,10 +1,11 @@
 import json
 import os
 
-# Пути к файлам
-exdata_file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/exdata.json"
-sprintdata_file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
-output_file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/data_car.json"
+# Пути к файлам внутри контейнера
+base_path = "/app/data"
+exdata_file_path = os.path.join(base_path, "exdata.json")
+sprintdata_file_path = os.path.join(base_path, "sprintdata.json")
+output_file_path = os.path.join(base_path, "data_car.json")
 
 # Чтение данных из exdata.json
 with open(exdata_file_path, 'r', encoding='utf-8') as exdata_file:

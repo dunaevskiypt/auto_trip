@@ -1,0 +1,11 @@
+# Базовый образ Python
+FROM python:3.9-slim
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем скрипт join.py в контейнер
+COPY ./join.py /app/join.py
+
+# Указываем команду по умолчанию для запуска скрипта
+CMD ["python", "join.py"]
