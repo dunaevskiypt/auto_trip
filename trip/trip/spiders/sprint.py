@@ -25,7 +25,7 @@ class SprintSpider(scrapy.Spider):
     ]
 
     # Путь к файлу для сохранения данных
-    file_path = "/home/peter/Desktop/Parsers/autoscraper/trip/trip/data/sprintdata.json"
+    file_path = "/data/store/sprintdata.json"
 
     def start_requests(self):
         # Делаем запросы на страницы от 0 до 2800
