@@ -17,7 +17,11 @@ COPY scrapy.cfg /app/scrapy.cfg
 COPY trip /app/trip
 
 # Устанавливаем Scrapy как исполняемый модуль
-ENTRYPOINT ["scrapy"]
+RUN pip install scrapy
 
 # Указываем команду по умолчанию для запуска паука
+ENTRYPOINT ["scrapy"]
+
+# Указываем команду для запуска паука с параметрами
 CMD ["crawl", "sprint"]
+

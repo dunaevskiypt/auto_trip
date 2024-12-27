@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Устанавливаем путь для хранения данных с парсерами (монтирование volume)
-VOLUME ["/home/peter/Documents/store"]
+VOLUME ["/data_store"]
 
 # Запускаем парсер
 CMD ["scrapy", "crawl", "extractor"]
+

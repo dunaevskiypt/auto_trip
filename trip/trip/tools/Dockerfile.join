@@ -9,3 +9,4 @@ COPY ./join.py /app/join.py
 
 # Указываем команду по умолчанию для запуска скрипта
 CMD ["python", "join.py"]
+

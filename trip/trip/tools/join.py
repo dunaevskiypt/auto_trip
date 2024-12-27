@@ -1,11 +1,12 @@
 import json
 import os
 
-# Пути к файлам внутри контейнера
-base_path = "/app/data"
+# Пути к файлам внутри контейнера (на основе Docker Volume)
+base_path = "/app/data"  # Этот путь монтируется на Docker Volume
 exdata_file_path = os.path.join(base_path, "exdata.json")
 sprintdata_file_path = os.path.join(base_path, "sprintdata.json")
-output_file_path = os.path.join(base_path, "data_car.json")
+output_file_path = "/app/data/data_car.json"
+
 
 # Чтение данных из exdata.json
 with open(exdata_file_path, 'r', encoding='utf-8') as exdata_file:
@@ -57,3 +58,4 @@ with open(output_file_path, 'w', encoding='utf-8') as output_file:
     json.dump(updated_data, output_file, ensure_ascii=False, indent=4)
 
 print(f"Данные успешно обновлены и сохранены в {output_file_path}")
+

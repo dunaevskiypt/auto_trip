@@ -35,12 +35,10 @@ drive_translation = {
 class ExtractorSpider(scrapy.Spider):
     name = "extractor"
     allowed_domains = ["auto.ria.com"]
+    
+    sprintdata_file_path = "/data_store/sprintdata.json"
+    file_path = "/data_store/exdata.json"
 
-    # Путь к файлу с данными
-    sprintdata_file_path = "/data/store/sprintdata.json"
-
-    # Путь к файлу для сохранения данных
-    file_path = "/data/store/exdata.json"
 
     def start_requests(self):
         # Загружаем список URL из файла sprintdata.json
