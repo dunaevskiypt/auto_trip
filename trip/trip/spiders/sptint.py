@@ -1,5 +1,4 @@
 import scrapy
-import json
 
 
 class SptintSpider(scrapy.Spider):
@@ -21,24 +20,22 @@ class SptintSpider(scrapy.Spider):
 
             self.log(f"Назва автомобіля: {car_name}")
 
+            # Отримуємо ціну в USD
             car_price_usd = car.xpath(
                 ".//div[@class='price-ticket']//span[@data-currency='USD']/text()").get()
             car_price_uah = car.xpath(
                 ".//div[@class='price-ticket']//span[@data-currency='UAH']/text()").get()
 
-            # Обробка ціни в USD
+            # Нормалізація ціни
             if car_price_usd:
                 car_price_usd = car_price_usd.strip().replace("\xa0", "").replace(" ", "")
                 try:
                     car_price_usd = float(car_price_usd)
-                    if car_price_usd.is_integer():
-                        car_price_usd = int(car_price_usd)
                 except ValueError:
                     car_price_usd = None
             else:
                 car_price_usd = None
 
-            # Обробка ціни в UAH
             if car_price_uah:
                 car_price_uah = car_price_uah.strip().replace("\xa0", "").replace(" ", "")
                 try:
@@ -48,17 +45,43 @@ class SptintSpider(scrapy.Spider):
             else:
                 car_price_uah = None
 
-            if car_name and (car_price_usd or car_price_uah):
+            # Витягуємо місце продажу (місто)
+            location = car.xpath(
+                ".//li[contains(@class, 'js-location')]//text()").getall()
+            location = " ".join([loc.strip()
+                                for loc in location if loc.strip()])
+
+            # Очищаємо локацію від зайвих текстів
+            if location:
+                location = location.replace(" ( від )", "").strip()
+
+            self.log(f"Місце продажу: {location}")
+
+            # Витягуємо пробіг
+            mileage = car.xpath(
+                ".//li[contains(@class, 'item-char js-race')]//text()").get()
+            if mileage:
+                mileage = mileage.strip().replace(" тис. км", "").replace(" ", "")
+                try:
+                    mileage = int(float(mileage) * 1000)
+                except ValueError:
+                    mileage = None
+            else:
+                mileage = None
+
+            if car_name and (car_price_usd or car_price_uah) and mileage is not None:
                 car_name = car_name.strip()
 
                 self.log(
-                    f"Ціна автомобіля (USD): {car_price_usd}, Ціна автомобіля (UAH): {car_price_uah}")
+                    f"Ціна автомобіля (USD): {car_price_usd}, Ціна автомобіля (UAH): {car_price_uah}, Пробіг: {mileage} км")
 
                 # Додаємо до списку
                 cars_data.append({
                     "car_name": car_name,
                     "car_price_usd": car_price_usd,
-                    "car_price_uah": car_price_uah
+                    "car_price_uah": car_price_uah,
+                    "car_mileage": mileage,
+                    "car_location": location  # Додаємо місце продажу
                 })
 
         # Повертаємо результат для кожного автомобіля
