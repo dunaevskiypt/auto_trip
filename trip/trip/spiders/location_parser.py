@@ -24,10 +24,21 @@ class LocationParser:
             region = readable_breadcrumbs[2]  # Регіон
             city = readable_breadcrumbs[3]   # Місто
 
+            # Витягуємо ID авто з елементу списку
+            car_id = response.xpath(
+                "//ul[@class='mb-10-list unstyle size13 mb-15']//li[contains(text(), 'ID авто')]//span[@class='bold']/text()").get()
+
+            # Перевіряємо чи ID існує і конвертуємо його в число, якщо це необхідно
+            if car_id:
+                car_id = int(car_id.strip())  # Перетворюємо на ціле число
+            else:
+                car_id = None  # Якщо ID не знайдено, ставимо None
+
             # Формуємо підсумковий словник з потрібними даними
             data = {
                 "region": region,
-                "city": city
+                "city": city,
+                "id": car_id  # Додаємо ID авто
             }
 
             # Експортуємо дані у файл

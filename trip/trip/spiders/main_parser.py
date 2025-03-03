@@ -1,7 +1,7 @@
-from scrapy.spiders import CrawlSpider, Rule
+from .info_car import InfoCarParser
+from .location_parser import LocationParser
 from scrapy.linkextractors import LinkExtractor
-from .location_parser import LocationParser  # правильний імпорт LocationParser
-from .info_car import InfoCarParser  # додано імпорт InfoCarParser
+from scrapy.spiders import CrawlSpider, Rule
 
 
 class MainSpider(CrawlSpider):
@@ -18,17 +18,17 @@ class MainSpider(CrawlSpider):
     def __init__(self, *args, **kwargs):
         super(MainSpider, self).__init__(*args, **kwargs)
 
-        # Створюємо парсери
+        # Создаем парсеры
         self.location_parser = LocationParser()
-        self.info_car_parser = InfoCarParser()  # Створюємо екземпляр InfoCarParser
+        self.info_car_parser = InfoCarParser()
 
     def parse_item(self, response):
-        # Використовуємо парсери для обробки відповіді
+        # Используем парсеры для обработки ответа
         yield from self.location_parser.parse(response)
-        # Додаємо обробку даних для InfoCarParser
         yield from self.info_car_parser.parse(response)
+        yield from self.sprint_parser.parse(response)
 
     def closed(self, reason):
-        # Закриваємо парсери після завершення роботи
+        # Закрываем парсеры после завершения работы
         self.location_parser.close()
-        self.info_car_parser.close()  # Закриваємо InfoCarParser
+        self.info_car_parser.close()
