@@ -5,15 +5,19 @@ class SprintParser(scrapy.Spider):
     name = "sprint_parser"
     allowed_domains = ["auto.ria.com"]
     start_urls = [
-        "https://auto.ria.com/uk/search/?lang_id=64&page=64&countpage=100&category_id=1&custom=1&abroad=2"
+        "https://auto.ria.com/uk/search/?lang_id=4&page=0&countpage=100&category_id=1&custom=1&abroad=2"
     ]
 
     def parse(self, response):
+        # Парсим текущую страницу
         for item in response.css("section.ticket-item"):
             fuel_type, engine_capacity = self.extract_fuel_and_capacity(item)
 
             # Получаем информацию о статусе и времени продажи
             sale_status, sold_time = self.get_sale_status(item)
+
+            # Добавляем информацию о ДТП
+            accident_info = self.check_accident(item)
 
             data = {
                 "id": item.attrib.get("data-advertisement-id"),
@@ -23,19 +27,25 @@ class SprintParser(scrapy.Spider):
                 "date_added": item.css("span[data-add-date]::attr(data-add-date)").get(),
                 "date_updated": item.css("span[data-update-date]::attr(data-update-date)").get(),
                 "sale_status": sale_status,  # Статус продажи
+                "accident": accident_info,  # Информация о ДТП
             }
 
             # Добавляем время продажи, если автомобиль продан
             if sold_time:
                 data["sold_time"] = sold_time
 
-            # Добавляем top_position только если он есть
-            top_position = item.css(
-                "a.item.small-promote-level::attr(title)").get()
-            if top_position:
-                data["top_position"] = int(top_position)  # Преобразуем в число
-
             yield data
+
+        # Переходим на следующие страницы, от 0 до 2999
+        current_page = response.url.split('page=')[1].split(
+            '&')[0]  # Извлекаем номер текущей страницы
+        # Увеличиваем номер страницы на 1
+        next_page_number = int(current_page) + 1
+
+        # Проверяем, если текущая страница меньше 3000, переходим к следующей
+        if next_page_number < 3000:
+            next_page_url = f"https://auto.ria.com/uk/search/?lang_id=4&page={next_page_number}&countpage=100&category_id=1&custom=1&abroad=2"
+            yield scrapy.Request(next_page_url, callback=self.parse)
 
     def extract_fuel_and_capacity(self, item):
         """Извлекает тип топлива и объем двигателя, возвращая их отдельно."""
@@ -66,3 +76,10 @@ class SprintParser(scrapy.Spider):
             return "Sold", sold_date  # Возвращаем статус "Sold" и дату продажи
         else:
             return "For Sale", None  # Возвращаем статус "For Sale", если не продано
+
+    def check_accident(self, item):
+        """Проверяет, был ли автомобиль в ДТП."""
+        accident_info = item.css("span.state._red::text").get()
+        if accident_info and "Був в ДТП" in accident_info:
+            return True  # Возвращаем True, если был в ДТП
+        return False  # Если информация о ДТП нет
