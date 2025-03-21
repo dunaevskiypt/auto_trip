@@ -9,77 +9,86 @@ class SprintParser(scrapy.Spider):
     ]
 
     def parse(self, response):
-        # Парсим текущую страницу
+        # Parse the current page
         for item in response.css("section.ticket-item"):
             fuel_type, engine_capacity = self.extract_fuel_and_capacity(item)
 
-            # Получаем информацию о статусе и времени продажи
+            # Get sale status and sold time
             sale_status, sold_time = self.get_sale_status(item)
 
-            # Добавляем информацию о ДТП
+            # Add accident information
             accident_info = self.check_accident(item)
+
+            # Extract additional information from <a class="item small-promote-level">
+            promotion_level = self.extract_promotion_level(item)
 
             data = {
                 "id": item.attrib.get("data-advertisement-id"),
-                "fuel_type": fuel_type,  # Только название топлива
+                "fuel_type": fuel_type,  # Fuel type only
                 "transmission": self.extract_text(item, "li.item-char:has(i.icon-akp)"),
-                "engine_capacity": engine_capacity,  # В миллилитрах
+                "engine_capacity": engine_capacity,  # In milliliters
                 "date_added": item.css("span[data-add-date]::attr(data-add-date)").get(),
                 "date_updated": item.css("span[data-update-date]::attr(data-update-date)").get(),
-                "sale_status": sale_status,  # Статус продажи
-                "accident": accident_info,  # Информация о ДТП
+                "sale_status": sale_status,  # Sale status
+                "accident": accident_info,  # Accident information
+                "promotion_level": promotion_level,  # Promotion level
             }
 
-            # Добавляем время продажи, если автомобиль продан
+            # Add sold time if the car is sold
             if sold_time:
                 data["sold_time"] = sold_time
 
             yield data
 
-        # Переходим на следующие страницы, от 0 до 2999
+        # Navigate to the next pages, from 0 to 2999
         current_page = response.url.split('page=')[1].split(
-            '&')[0]  # Извлекаем номер текущей страницы
-        # Увеличиваем номер страницы на 1
+            '&')[0]  # Extract the current page number
+        # Increment page number by 1
         next_page_number = int(current_page) + 1
 
-        # Проверяем, если текущая страница меньше 3000, переходим к следующей
-        if next_page_number < 3000:
+        # Check if the current page is less than 3000, navigate to the next one
+        if next_page_number < 3:
             next_page_url = f"https://auto.ria.com/uk/search/?lang_id=4&page={next_page_number}&countpage=100&category_id=1&custom=1&abroad=2"
             yield scrapy.Request(next_page_url, callback=self.parse)
 
     def extract_fuel_and_capacity(self, item):
-        """Извлекает тип топлива и объем двигателя, возвращая их отдельно."""
+        """Extracts fuel type and engine capacity, returning them separately."""
         fuel_text = self.extract_text(item, "li.item-char:has(i.icon-fuel)")
 
         if fuel_text:
             parts = fuel_text.split(", ")
-            fuel_type = parts[0]  # Первое слово - это топливо
+            fuel_type = parts[0]  # First word is fuel type
             engine_capacity = int(float(
-                parts[1].split()[0]) * 1000) if len(parts) > 1 else None  # Преобразуем в мл
+                parts[1].split()[0]) * 1000) if len(parts) > 1 else None  # Convert to ml
             return fuel_type, engine_capacity
         else:
-            # Обрабатываем электромобили (если топлива нет)
-            fuel_type = "Electric"  # Для электромобилей указываем этот тип
-            engine_capacity = None  # Для электромобилей объем двигателя не нужен
+            # Handle electric vehicles (if no fuel type)
+            fuel_type = "Electric"  # Set this type for electric vehicles
+            engine_capacity = None  # No engine capacity needed for electric vehicles
             return fuel_type, engine_capacity
 
     def extract_text(self, item, selector):
-        """Возвращает текст внутри <li>, удаляя вложенные теги и лишние пробелы."""
+        """Returns the text inside <li>, removing nested tags and extra spaces."""
         return item.css(selector).xpath("normalize-space()").get()
 
     def get_sale_status(self, item):
-        """Проверяет, был ли автомобиль продан и возвращает статус и время продажи."""
+        """Checks if the car has been sold and returns status and sold time."""
         sold_date = item.css(
             "span[data-sold-date]::attr(data-sold-date)").get()
 
         if sold_date:
-            return "Sold", sold_date  # Возвращаем статус "Sold" и дату продажи
+            return "Sold", sold_date  # Return "Sold" status and sale date
         else:
-            return "For Sale", None  # Возвращаем статус "For Sale", если не продано
+            return "For Sale", None  # Return "For Sale" status if not sold
 
     def check_accident(self, item):
-        """Проверяет, был ли автомобиль в ДТП."""
+        """Checks if the car has been in an accident."""
         accident_info = item.css("span.state._red::text").get()
         if accident_info and "Був в ДТП" in accident_info:
-            return True  # Возвращаем True, если был в ДТП
-        return False  # Если информация о ДТП нет
+            return True  # Return True if the car was in an accident
+        return False  # No accident information
+
+    def extract_promotion_level(self, item):
+        """Extracts promotion level from the <a class="item small-promote-level"> element."""
+        promotion = item.css("a.item.small-promote-level::attr(title)").get()
+        return promotion if promotion else None
